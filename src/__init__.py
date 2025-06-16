@@ -1,6 +1,6 @@
 from importlib.metadata import version, PackageNotFoundError
 
-PREV_SPEC_VERSION = 419000
+PREV_SPEC_VERSION = 500000
 
 try:
     __version__ = version("hashtensor-validator")

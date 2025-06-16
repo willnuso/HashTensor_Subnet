@@ -83,6 +83,34 @@ class DatabaseService:
         self.session.commit()
         return None  # Success
 
+    async def get_hotkey_workers_by_time(
+        self,
+        since_timestamp: float = 0.0,
+        page_size: int = 100,
+        page_number: int = 1,
+    ) -> list[dict]:
+        query = (
+            self.session.query(HotkeyWorker)
+            .filter(HotkeyWorker.registration_time > since_timestamp)
+            .order_by(HotkeyWorker.registration_time)
+        )
+        total = query.count()
+        results = (
+            query
+            .offset((page_number - 1) * page_size)
+            .limit(page_size)
+            .all()
+        )
+        return [
+            {
+                "worker": row.worker,
+                "hotkey": row.hotkey,
+                "registration_time": row.registration_time,
+                "signature": row.signature,
+            }
+            for row in results
+        ]
+
 
 class DynamicConfig(Base):
     __tablename__ = "dynamic_config"

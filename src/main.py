@@ -180,6 +180,21 @@ async def get_metrics(validator: Annotated[Validator, Depends(get_validator)]) -
 async def get_mappings(mapping_manager: Annotated[MappingManager, Depends(get_mapping_manager)]):
     return await mapping_manager.get_mapping()
 
+
+@app.get("/hotkey_workers")
+async def get_hotkey_workers(
+    db_service: Annotated[DatabaseService, Depends(get_database_service)],
+    since_timestamp: float = 0.0,
+    page_size: int = 100,
+    page_number: int = 1,
+):
+    return await db_service.get_hotkey_workers_by_time(
+        since_timestamp=since_timestamp,
+        page_size=page_size,
+        page_number=page_number,
+    )
+
+
 # Only define /ratings if ENV == "test"
 if ENV == "test":
     @app.get("/ratings")
