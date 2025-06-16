@@ -13,11 +13,12 @@ from .dependencies import (
 
 from . import __spec_version__
 
-
-logger = get_logger(__name__)
-
+from async_substrate_interface.errors import SubstrateRequestException
 
 from .utils import get_nodes_for_netuid_cached
+
+
+logger = get_logger(__name__)
 
 
 def set_weights(
@@ -49,17 +50,21 @@ def set_weights(
     node_ids = [node.node_id for node in nodes]
     node_weights = [hotkey_to_rating.get(node.hotkey, 0) for node in nodes]
 
-    return weights.set_node_weights(
-        substrate=substrate,
-        keypair=keypair,
-        node_ids=node_ids,
-        node_weights=node_weights,
-        netuid=netuid,
-        validator_node_id=validator_node_id,
-        version_key=__spec_version__,
-        wait_for_inclusion=True,
-        wait_for_finalization=True,
-    )
+    try:
+        return weights.set_node_weights(
+            substrate=substrate,
+            keypair=keypair,
+            node_ids=node_ids,
+            node_weights=node_weights,
+            netuid=netuid,
+            validator_node_id=validator_node_id,
+            version_key=__spec_version__,
+            wait_for_inclusion=True,
+            wait_for_finalization=True,
+        )
+    except SubstrateRequestException as e:
+        logger.error(f"Failed to set node weights: {e}")
+        return False
 
 
 async def __main__():
