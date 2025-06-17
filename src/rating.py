@@ -13,10 +13,18 @@ logger = get_logger(__name__)
 
 import time
 
+
 class RatingCalculator:
-    def __init__(self, uptime_alpha: float = 2.0, window: timedelta = timedelta(hours=1), ndigits: int = 8):
+    def __init__(
+        self,
+        uptime_alpha: float = 2.0,
+        window: timedelta = timedelta(hours=1),
+        ndigits: int = 8,
+    ):
         self.uptime_alpha = float(uptime_alpha)
-        self.window_seconds = window.total_seconds()  # length of the window (24h)
+        self.window_seconds = (
+            window.total_seconds()
+        )  # length of the window (24h)
         self.ndigits = ndigits
 
     def compute_effective_work(self, metrics: List[MinerMetrics]) -> float:
@@ -53,14 +61,17 @@ class RatingCalculator:
         uptimes = [max(0.0, min(1.0, u)) for u in uptimes]
         return sum(uptimes) / len(uptimes)
 
-    def rate_all(self, metrics: Dict[str, List[MinerMetrics]]) -> Dict[str, float]:
+    def rate_all(
+        self, metrics: Dict[str, List[MinerMetrics]]
+    ) -> Dict[str, float]:
         """
         First, compute effective work (valid_shares * difficulty),
         normalize, apply uptime penalty, and clamp the result.
         """
         # 1. Total work
         work = {
-            hotkey: self.compute_effective_work(ms) for hotkey, ms in metrics.items()
+            hotkey: self.compute_effective_work(ms)
+            for hotkey, ms in metrics.items()
         }
         max_work = max(work.values(), default=1.0)
 
@@ -69,7 +80,7 @@ class RatingCalculator:
         for hotkey, ms in metrics.items():
             norm_score = 0.0 if max_work == 0 else work[hotkey] / max_work
             avg_uptime = self.compute_avg_uptime(ms)  # ∈ [0.0, 1.0]
-            penalized = norm_score * (avg_uptime ** self.uptime_alpha)
+            penalized = norm_score * (avg_uptime**self.uptime_alpha)
             # 3. Clamp to [0.0, 1.0]
             scores[hotkey] = round(max(0.0, min(1.0, penalized)), self.ndigits)
         return scores

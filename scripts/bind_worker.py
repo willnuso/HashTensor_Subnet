@@ -32,24 +32,26 @@ NETWORK_TO_NETUID = {
 
 def check_dependencies():
     required_packages = {
-        'bittensor_wallet': 'bittensor-wallet',
-        'async_substrate_interface': 'async-substrate-interface',
-        'scalecodec': 'scalecodec',
-        'aiohttp': 'aiohttp',
-
+        "bittensor_wallet": "bittensor-wallet",
+        "async_substrate_interface": "async-substrate-interface",
+        "scalecodec": "scalecodec",
+        "aiohttp": "aiohttp",
     }
-    
+
     missing_packages = []
     for module, package in required_packages.items():
         try:
             __import__(module)
         except ImportError:
             missing_packages.append(package)
-    
+
     if missing_packages:
-        print("Error: Missing required packages. Please install them using pip:")
+        print(
+            "Error: Missing required packages. Please install them using pip:"
+        )
         print(f"pip install {' '.join(missing_packages)}")
         sys.exit(1)
+
 
 check_dependencies()
 
@@ -155,7 +157,9 @@ async def is_hashtensor_validator(node):
                 if resp.status != 200:
                     return False
                 data = await resp.json()
-                return data.get("info", {}).get("title") == "HashTensor Validator"
+                return (
+                    data.get("info", {}).get("title") == "HashTensor Validator"
+                )
     except Exception:
         return False
 
@@ -167,7 +171,13 @@ async def get_validators(
     # Filter nodes with a real IP
     real_nodes = [node for node in nodes if node["ip"] != "0.0.0.0"]
     # Run all checks concurrently
-    results = await asyncio.gather(*(is_hashtensor_validator(node) for node in real_nodes)) if real_nodes else []
+    results = (
+        await asyncio.gather(
+            *(is_hashtensor_validator(node) for node in real_nodes)
+        )
+        if real_nodes
+        else []
+    )
     # Return only nodes that passed the check
     return [node for node, is_valid in zip(real_nodes, results) if is_valid]
 

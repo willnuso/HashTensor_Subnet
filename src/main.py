@@ -15,7 +15,7 @@ from fiber import SubstrateInterface
 
 from .mapping import MappingManager
 
-from .tasks import set_weights_task
+from .tasks import set_weights_task, sync_hotkey_workers_task
 
 from .utils import is_hotkey_registered, verify_signature
 
@@ -40,6 +40,7 @@ from .dependencies import (
     get_worker_provider,
 )
 from .interfaces.database import DatabaseService
+from . import __version__ as version
 
 
 logger = get_logger(__name__)
@@ -47,7 +48,9 @@ logger = get_logger(__name__)
 
 # CORS setup
 ENV = os.environ.get("ENV", "prod")
-REMOTE_SITE_ORIGIN = os.environ.get("REMOTE_SITE_ORIGIN", "https://hashtensor.com")
+REMOTE_SITE_ORIGIN = os.environ.get(
+    "REMOTE_SITE_ORIGIN", "https://hashtensor.com"
+)
 
 if ENV == "test":
     origins = ["http://localhost", "http://localhost:3000", "http://127.0.0.1"]
@@ -71,6 +74,7 @@ async def lifespan(app: FastAPI):
     keypair = chain_utils.load_hotkey_keypair(
         wallet_name=config.wallet_name, hotkey_name=config.wallet_hotkey
     )
+    db_service = get_database_service(config)
 
     async def weights_loop():
         while True:
@@ -91,16 +95,32 @@ async def lifespan(app: FastAPI):
                 logger.exception(f"Error in set_weights task: {e}")
                 os._exit(1)
 
-    task = asyncio.create_task(weights_loop())
+    async def sync_hotkey_workers_loop():
+        while True:
+            try:
+                await sync_hotkey_workers_task(db_service, config, substrate)
+            except Exception as e:
+                logger.exception(f"Error in sync_hotkey_workers_task: {e}")
+            await asyncio.sleep(60)  # 1 minute
+
+    task1 = asyncio.create_task(weights_loop())
+    task2 = asyncio.create_task(sync_hotkey_workers_loop())
     yield
 
 
-app = FastAPI(prefix="/api", title="HashTensor Validator", lifespan=lifespan)
+app = FastAPI(
+    prefix="/api",
+    title="HashTensor Validator",
+    lifespan=lifespan,
+    version=version,
+)
 
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if ENV == "test" else [REMOTE_SITE_ORIGIN],  # Not recommended for production!
+    allow_origins=(
+        ["*"] if ENV == "test" else [REMOTE_SITE_ORIGIN]
+    ),  # Not recommended for production!
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -167,7 +187,9 @@ async def register_hotkey_worker(
 
 
 @app.get("/metrics")
-async def get_metrics(validator: Annotated[Validator, Depends(get_validator)]) -> List[MetricsResponse]:
+async def get_metrics(
+    validator: Annotated[Validator, Depends(get_validator)]
+) -> List[MetricsResponse]:
     hotkey_metrics = await validator.get_hotkey_metrics_map()
     return [
         MetricsResponse(
@@ -181,7 +203,9 @@ async def get_metrics(validator: Annotated[Validator, Depends(get_validator)]) -
 
 
 @app.get("/mappings")
-async def get_mappings(mapping_manager: Annotated[MappingManager, Depends(get_mapping_manager)]):
+async def get_mappings(
+    mapping_manager: Annotated[MappingManager, Depends(get_mapping_manager)]
+):
     return await mapping_manager.get_mapping()
 
 
@@ -201,6 +225,9 @@ async def get_hotkey_workers(
 
 # Only define /ratings if ENV == "test"
 if ENV == "test":
+
     @app.get("/ratings")
-    async def get_ratings(validator: Annotated[Validator, Depends(get_validator)]):
+    async def get_ratings(
+        validator: Annotated[Validator, Depends(get_validator)]
+    ):
         return await validator.compute_ratings()

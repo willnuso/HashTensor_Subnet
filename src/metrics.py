@@ -27,6 +27,7 @@ class MinerMetrics(BaseModel):
     - hashrate: Estimated hashrate in H/s, calculated as (valid_shares * avg_difficulty * 2^32) / window_seconds.
     - worker_name: Name of the worker.
     """
+
     uptime: float = 0.0
     valid_shares: int = 0
     invalid_shares: int = 0
@@ -39,9 +40,7 @@ class MinerMetrics(BaseModel):
 
     @classmethod
     def default_instance(cls, worker_name: str | None = None) -> Self:
-        return cls(
-            worker_name=worker_name
-        )
+        return cls(worker_name=worker_name)
 
 
 PROM_QUERY = (
@@ -51,7 +50,10 @@ PROM_QUERY = (
 
 class MetricsClient:
     def __init__(
-        self, endpoint: str, window: timedelta = timedelta(minutes=60), pool_owner_wallet: str | None = None
+        self,
+        endpoint: str,
+        window: timedelta = timedelta(minutes=60),
+        pool_owner_wallet: str | None = None,
     ):
         self.endpoint = endpoint
         self.window = window
@@ -115,7 +117,7 @@ class MetricsClient:
     async def fetch_metrics(self) -> Dict[MinerKey, MinerMetrics]:
         """
         Fetch and parse metrics from Prometheus endpoint for all wallets.
-        
+
         - ks_valid_share_counter: Number of valid shares (from Go: stats.SharesFound.Add(1))
         - ks_valid_share_diff_counter: Sum of share difficulties (from Go: stats.SharesDiff.Add(state.stratumDiff.hashValue))
         - Hashrate is calculated as (valid_shares * avg_difficulty * 2^32) / window_seconds
@@ -134,13 +136,22 @@ class MetricsClient:
             )
             result = {}
             window_seconds = int(self.window.total_seconds())
-            
+
             for miner_key, valid_shares in valid_shares_map.items():
-                if self.pool_owner_wallet and miner_key.wallet != self.pool_owner_wallet:
+                if (
+                    self.pool_owner_wallet
+                    and miner_key.wallet != self.pool_owner_wallet
+                ):
                     continue
                 total_diff = total_diff_map.get(miner_key, 0.0)
-                avg_difficulty = total_diff / valid_shares if valid_shares > 0 else 0.0
-                hashrate = (valid_shares * avg_difficulty * 2**32) / window_seconds if valid_shares > 0 else 0.0
+                avg_difficulty = (
+                    total_diff / valid_shares if valid_shares > 0 else 0.0
+                )
+                hashrate = (
+                    (valid_shares * avg_difficulty * 2**32) / window_seconds
+                    if valid_shares > 0
+                    else 0.0
+                )
                 miner_metrics = MinerMetrics(
                     uptime=uptime_map.get(miner_key, 0.0),
                     valid_shares=valid_shares,

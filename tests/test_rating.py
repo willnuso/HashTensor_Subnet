@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 FIXED_NOW = 1_800_000_000  # Arbitrary fixed timestamp for deterministic tests
 
+
 @pytest.mark.parametrize(
     "scenario,metrics_dict,expected",
     [
@@ -14,7 +15,8 @@ FIXED_NOW = 1_800_000_000  # Arbitrary fixed timestamp for deterministic tests
             {
                 "hotkey1": [
                     MinerMetrics(
-                        uptime=FIXED_NOW - 3600,  # started exactly at window start
+                        uptime=FIXED_NOW
+                        - 3600,  # started exactly at window start
                         valid_shares=100,
                         invalid_shares=0,
                         difficulty=2.0,
@@ -53,7 +55,8 @@ FIXED_NOW = 1_800_000_000  # Arbitrary fixed timestamp for deterministic tests
             {
                 "hotkey1": [
                     MinerMetrics(
-                        uptime=FIXED_NOW - 1800,  # started halfway through window
+                        uptime=FIXED_NOW
+                        - 1800,  # started halfway through window
                         valid_shares=100,
                         invalid_shares=0,
                         difficulty=2.0,
@@ -84,7 +87,8 @@ FIXED_NOW = 1_800_000_000  # Arbitrary fixed timestamp for deterministic tests
                         hashrate=1000.0,
                     ),
                     MinerMetrics(
-                        uptime=FIXED_NOW - 1800,  # started halfway through window
+                        uptime=FIXED_NOW
+                        - 1800,  # started halfway through window
                         valid_shares=50,
                         invalid_shares=0,
                         difficulty=2.0,
@@ -151,7 +155,7 @@ FIXED_NOW = 1_800_000_000  # Arbitrary fixed timestamp for deterministic tests
                 ]
             },
             {
-                "hotkey1": 0.25, # 0.5^2 = 0.25
+                "hotkey1": 0.25,  # 0.5^2 = 0.25
             },
         ),
         (
@@ -239,7 +243,8 @@ def test_rating_calculator_real_data():
             ],
             "hotkey2": [
                 MinerMetrics(
-                    uptime=FIXED_NOW - 3599,  # started 1 second after window start
+                    uptime=FIXED_NOW
+                    - 3599,  # started 1 second after window start
                     valid_shares=5,
                     invalid_shares=0,
                     difficulty=85.89934592,

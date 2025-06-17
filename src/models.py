@@ -32,4 +32,3 @@ class MetricsResponse(BaseModel):
     @property
     def is_active(self) -> bool:
         return self.active_workers != 0
-

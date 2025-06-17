@@ -3,7 +3,14 @@
 
 from datetime import datetime
 import os
-from sqlalchemy import DateTime, Float, create_engine, String, Column, BigInteger
+from sqlalchemy import (
+    DateTime,
+    Float,
+    create_engine,
+    String,
+    Column,
+    BigInteger,
+)
 from sqlalchemy.orm import (
     sessionmaker,
     declarative_base,
@@ -23,7 +30,9 @@ class HotkeyWorker(Base):
     worker: Mapped[str] = mapped_column(String, primary_key=True)
     hotkey: Mapped[str] = mapped_column(String, nullable=False)
     registration_time: Mapped[float] = mapped_column(Float, nullable=False)
-    registration_time_int: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    registration_time_int: Mapped[int] = mapped_column(
+        BigInteger, nullable=False
+    )
     signature: Mapped[str] = mapped_column(String, nullable=False)
 
 
@@ -71,9 +80,13 @@ class DatabaseService:
         if existing:
             raise ValueError("Worker already registered")
         # Restrict number of workers per hotkey
-        worker_count = self.session.query(HotkeyWorker).filter_by(hotkey=hotkey).count()
+        worker_count = (
+            self.session.query(HotkeyWorker).filter_by(hotkey=hotkey).count()
+        )
         if worker_count >= self.max_workers:
-            raise ValueError(f"Maximum number of workers ({self.max_workers}) for this hotkey reached")
+            raise ValueError(
+                f"Maximum number of workers ({self.max_workers}) for this hotkey reached"
+            )
         # Store both float and int
         if isinstance(registration_time, float):
             reg_time_float = registration_time
@@ -107,10 +120,7 @@ class DatabaseService:
         )
         total = query.count()
         results = (
-            query
-            .offset((page_number - 1) * page_size)
-            .limit(page_size)
-            .all()
+            query.offset((page_number - 1) * page_size).limit(page_size).all()
         )
         return [
             {

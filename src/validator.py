@@ -20,7 +20,9 @@ class Validator:
         self.config = config
         self.metrics_client = metrics_client
         self.mapping_manager = mapping_manager
-        self.rating_calculator = RatingCalculator(config.rating_weight, config.window)
+        self.rating_calculator = RatingCalculator(
+            config.rating_weight, config.window
+        )
 
     async def compute_ratings(self):
         """Fetch metrics, update mapping, compute ratings, and send to Bittensor."""
@@ -34,6 +36,10 @@ class Validator:
         mapping = await self.mapping_manager.get_mapping()
         hotkey_metrics: Dict[str, List[MinerMetrics]] = defaultdict(list)
         for worker, hotkey in mapping.items():
-            key = MinerKey(wallet=self.config.kaspa_pool_owner_wallet, worker=worker)
-            hotkey_metrics[hotkey].append(metrics.get(key, MinerMetrics.default_instance(worker)))
+            key = MinerKey(
+                wallet=self.config.kaspa_pool_owner_wallet, worker=worker
+            )
+            hotkey_metrics[hotkey].append(
+                metrics.get(key, MinerMetrics.default_instance(worker))
+            )
         return dict(hotkey_metrics)
