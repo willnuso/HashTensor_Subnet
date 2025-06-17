@@ -151,7 +151,7 @@ async def is_hashtensor_validator(node):
     url = f"http://{node['ip']}:{node['port']}/openapi.json"
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=3) as resp:
+            async with session.get(url, timeout=10) as resp:
                 if resp.status != 200:
                     return False
                 data = await resp.json()

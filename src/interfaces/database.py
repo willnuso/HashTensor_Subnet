@@ -3,7 +3,7 @@
 
 from datetime import datetime
 import os
-from sqlalchemy import DateTime, Float, create_engine, String, Column
+from sqlalchemy import DateTime, Float, create_engine, String, Column, BigInteger
 from sqlalchemy.orm import (
     sessionmaker,
     declarative_base,
@@ -23,6 +23,7 @@ class HotkeyWorker(Base):
     worker: Mapped[str] = mapped_column(String, primary_key=True)
     hotkey: Mapped[str] = mapped_column(String, nullable=False)
     registration_time: Mapped[float] = mapped_column(Float, nullable=False)
+    registration_time_int: Mapped[int] = mapped_column(BigInteger, nullable=False)
     signature: Mapped[str] = mapped_column(String, nullable=False)
 
 
@@ -61,7 +62,7 @@ class DatabaseService:
         hotkey: str,
         worker: str,
         signature: str,
-        registration_time: float,
+        registration_time: float | int,
     ) -> None:
         # Only add mapping to database
         existing = (
@@ -73,11 +74,19 @@ class DatabaseService:
         worker_count = self.session.query(HotkeyWorker).filter_by(hotkey=hotkey).count()
         if worker_count >= self.max_workers:
             raise ValueError(f"Maximum number of workers ({self.max_workers}) for this hotkey reached")
+        # Store both float and int
+        if isinstance(registration_time, float):
+            reg_time_float = registration_time
+            reg_time_int = int(registration_time * 1_000_000)
+        else:
+            reg_time_float = float(registration_time) / 1_000_000
+            reg_time_int = int(registration_time)
         new_mapping = HotkeyWorker(
             worker=worker,
             hotkey=hotkey,
             signature=signature,
-            registration_time=registration_time,
+            registration_time=reg_time_float,
+            registration_time_int=reg_time_int,
         )
         self.session.add(new_mapping)
         self.session.commit()
@@ -89,10 +98,12 @@ class DatabaseService:
         page_size: int = 100,
         page_number: int = 1,
     ) -> list[dict]:
+        # Convert since_timestamp to integer microseconds for comparison
+        since_ts_int = int(since_timestamp * 1_000_000)
         query = (
             self.session.query(HotkeyWorker)
-            .filter(HotkeyWorker.registration_time > since_timestamp)
-            .order_by(HotkeyWorker.registration_time)
+            .filter(HotkeyWorker.registration_time_int > since_ts_int)
+            .order_by(HotkeyWorker.registration_time_int)
         )
         total = query.count()
         results = (
@@ -105,7 +116,8 @@ class DatabaseService:
             {
                 "worker": row.worker,
                 "hotkey": row.hotkey,
-                "registration_time": row.registration_time,
+                "registration_time": row.registration_time,  # API compatibility
+                "registration_time_int": row.registration_time_int,  # For reference
                 "signature": row.signature,
             }
             for row in results

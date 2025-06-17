@@ -122,11 +122,11 @@ async def register_hotkey_worker(
     x_signature: Annotated[str, Header(alias="X-Signature")],
 ):
     # 1. Log incoming request data
-    logger.info(f"/register request: payload={reg.model_dump()}")
+    logger.debug(f"/register request: payload={reg.model_dump()}")
     reg_dict = reg.model_dump()
     reg_json = json.dumps(reg_dict, sort_keys=True, separators=(",", ":"))
-    logger.info(f"/register reg_json: {reg_json}")
-    logger.info(f"/register X-Signature: {x_signature}")
+    logger.debug(f"/register reg_json: {reg_json}")
+    logger.debug(f"/register X-Signature: {x_signature}")
     now = time.time()
     if (
         abs(now - reg.registration_time)
@@ -149,7 +149,6 @@ async def register_hotkey_worker(
     if config.verify_signature and not verify_signature(
         reg.hotkey, reg_json, x_signature
     ):
-        logger.info("/register: Invalid signature")
         raise HTTPException(status_code=400, detail="Invalid signature")
     # 4. Check hotkey is registered
     if not is_hotkey_registered(reg.hotkey, substrate, config.netuid):
@@ -158,6 +157,7 @@ async def register_hotkey_worker(
             detail="Hotkey not registered. To register in subnet use btcli command: `btcli subnet register`",
         )
     try:
+        # Store registration_time as float seconds, db will convert to int microseconds
         await db_service.add_mapping(
             reg.hotkey, reg.worker, x_signature, reg.registration_time
         )
