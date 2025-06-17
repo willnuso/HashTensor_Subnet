@@ -121,7 +121,12 @@ async def register_hotkey_worker(
     substrate: Annotated[SubstrateInterface, Depends(get_substrate)],
     x_signature: Annotated[str, Header(alias="X-Signature")],
 ):
-    # 1. Check registration_time is close to current UTC time
+    # 1. Log incoming request data
+    logger.info(f"/register request: payload={reg.model_dump()}")
+    reg_dict = reg.model_dump()
+    reg_json = json.dumps(reg_dict, sort_keys=True, separators=(",", ":"))
+    logger.info(f"/register reg_json: {reg_json}")
+    logger.info(f"/register X-Signature: {x_signature}")
     now = time.time()
     if (
         abs(now - reg.registration_time)
@@ -141,11 +146,10 @@ async def register_hotkey_worker(
             + f"Kaspa Pool Owner Wallet: {config.kaspa_pool_owner_wallet}",
         )
     # 3. Verify signature on the full request object (sorted keys)
-    reg_dict = reg.model_dump()
-    reg_json = json.dumps(reg_dict, sort_keys=True, separators=(",", ":"))
     if config.verify_signature and not verify_signature(
         reg.hotkey, reg_json, x_signature
     ):
+        logger.info("/register: Invalid signature")
         raise HTTPException(status_code=400, detail="Invalid signature")
     # 4. Check hotkey is registered
     if not is_hotkey_registered(reg.hotkey, substrate, config.netuid):
