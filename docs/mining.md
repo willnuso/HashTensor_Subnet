@@ -105,7 +105,7 @@ HashTensor offers two different pool endpoints optimized for different mining ha
 
 | Pool Type | Port | Best For | Min Difficulty | Features |
 |-----------|------|----------|----------------|----------|
-| **Standard Pool** | `5555` | GPU miners, general-purpose rigs | 8.2T (2^13) | Variable difficulty, standard stratum |
+| **Standard Pool** | `5555` | GPU miners, general-purpose rigs | 8.2T (2^13) | Variable difficulty, extranonce 2, standard stratum |
 | **High Difficulty Pool** | `6666` | ASIC miners, high-hashrate rigs, IceRiver ASICs | 16.4T (2^14) | POW2 clamp, extended nonce (3), ASIC optimized |
 
 #### **Standard Pool (GPU Miners)**
