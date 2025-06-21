@@ -99,7 +99,43 @@ cd 1.76
 
 ---
 
-### 4. Important Security Steps
+### 4. Pool Connection Options
+
+HashTensor offers two different pool endpoints optimized for different mining hardware:
+
+| Pool Type | Port | Best For | Min Difficulty | Features |
+|-----------|------|----------|----------------|----------|
+| **Standard Pool** | `5555` | GPU miners, general-purpose rigs | 8.2T (2^13) | Variable difficulty, standard stratum |
+| **High Difficulty Pool** | `6666` | ASIC miners, high-hashrate rigs, IceRiver ASICs | 16.4T (2^14) | POW2 clamp, extended nonce (3), ASIC optimized |
+
+#### **Standard Pool (GPU Miners)**
+**Connection:** `pool.hashtensor.com:5555`
+
+**Example configuration:**
+```bash
+./lolMiner --algo KASPA \
+  --user kaspa:qr4ksh6s3rmy5f4qyql2kh7p9z7f4c55da5r5gz2nnsd8ctt4k69whtr4u0wp.YOUR_WORKER_NAME \
+  --pool pool.hashtensor.com:5555
+```
+
+#### **High Difficulty Pool (ASIC Miners)**
+**Connection:** `pool.hashtensor.com:6666`
+
+**Configuration:**
+Use your ASIC's native mining software with the following connection parameters:
+- **Pool URL:** `pool.hashtensor.com:6666`
+- **Worker:** `kaspa:qr4ksh6s3rmy5f4qyql2kh7p9z7f4c55da5r5gz2nnsd8ctt4k69whtr4u0wp.YOUR_WORKER_NAME`
+- **Password:** (leave empty)
+
+#### **Which Pool Should You Use?**
+- **Use Port 5555** if you're mining with GPUs or have hash rates below ~10 TH/s
+- **Use Port 6666** if you're using ASICs or have hash rates above ~10 TH/s
+
+**Note:** Both pools connect to the same Kaspa network and contribute to the HashTensor subnet. Choose based on your hardware capabilities for optimal performance.
+
+---
+
+### 5. Important Security Steps
 
 #### **Before Registration**
 
@@ -130,7 +166,7 @@ cd 1.76
 
 ---
 
-### 5. Multiple Workers Support
+### 6. Multiple Workers Support
 
 - You can register multiple workers under the same hotkey.
 - Each worker must have a unique name that contains your hotkey.
@@ -157,7 +193,7 @@ curl -s https://raw.githubusercontent.com/HashTensor/HashTensor_Subnet/main/scri
 
 ---
 
-### 6. Unbinding Workers
+### 7. Unbinding Workers
 
 When you need to remove a worker from the subnet (e.g., when decommissioning hardware or changing worker names), you can use the unbind scripts.
 
@@ -199,42 +235,6 @@ curl -s https://raw.githubusercontent.com/HashTensor/HashTensor_Subnet/main/scri
 - **You must confirm with "yes"** to proceed with the unbinding
 - This action cannot be undone - workers will need to be re-registered if you want to use them again
 
-**Making it Interactive with curl:**
-
-The script now tries to handle interactive input even when piped via curl. If the standard approach doesn't work, try these alternatives:
-
-**Option 1: Use /dev/tty (Recommended)**
-```bash
-curl -s https://raw.githubusercontent.com/HashTensor/HashTensor_Subnet/main/scripts/unbind_all.py | python3 - \
-  --wallet.name my_wallet \
-  --wallet.hotkey my_hotkey \
-  --subtensor.network finney
-```
-The script will automatically try to use `/dev/tty` for interactive input if stdin is redirected.
-
-**Option 2: Download and Run Locally**
-```bash
-# Download the script
-curl -s https://raw.githubusercontent.com/HashTensor/HashTensor_Subnet/main/scripts/unbind_all.py > unbind_all.py
-
-# Run it directly
-python3 unbind_all.py \
-  --wallet.name my_wallet \
-  --wallet.hotkey my_hotkey \
-  --subtensor.network finney
-```
-
-**For Automated/Non-Interactive Use:**
-If you're using the script in a non-interactive environment (like when piping via curl), add the `--confirm` flag to skip the confirmation prompt:
-
-```bash
-curl -s https://raw.githubusercontent.com/HashTensor/HashTensor_Subnet/main/scripts/unbind_all.py | python3 - \
-  --wallet.name my_wallet \
-  --wallet.hotkey my_hotkey \
-  --subtensor.network finney \
-  --confirm
-```
-
 **Example Output:**
 ```
 Wallet hotkey: 5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty
@@ -267,7 +267,7 @@ Unbind process completed for 3 workers
 
 ---
 
-### 7. Common Issues
+### 8. Common Issues
 
 #### ⚠️ Miner Startup Errors
 
@@ -296,7 +296,7 @@ Unbind process completed for 3 workers
 
 ---
 
-### 8. Security Tips
+### 9. Security Tips
 
 - Never share your worker name **before registration**.
 - If your worker name is compromised, stop mining and restart with a new name.
@@ -307,7 +307,7 @@ Unbind process completed for 3 workers
 
 ---
 
-### 9. Script Requirements
+### 10. Script Requirements
 
 > The registration and unbind scripts require:
 > - Python 3.12+
