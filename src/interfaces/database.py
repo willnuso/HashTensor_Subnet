@@ -19,6 +19,7 @@ from sqlalchemy.orm import (
 )
 from ..mapping import MappingSource
 from typing import Optional
+import time
 
 DATABASE_URL = f"sqlite:///data/mapping.db"
 
@@ -34,6 +35,14 @@ class HotkeyWorker(Base):
         BigInteger, nullable=False
     )
     signature: Mapped[str] = mapped_column(String, nullable=False)
+    unbind_signature: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+
+class ValidatorSyncOffset(Base):
+    __tablename__ = "validator_sync_offset"
+    hotkey: Mapped[str] = mapped_column(String, primary_key=True)
+    last_registration_time: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    last_sync_time: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
 
 class SqliteMappingSource(MappingSource):
@@ -50,7 +59,7 @@ class SqliteMappingSource(MappingSource):
         # Load mapping from SQLite database: worker -> hotkey
         # This is a synchronous DB call, but the method is async for interface compatibility
         result = {}
-        for row in self.session.query(HotkeyWorker).all():
+        for row in self.session.query(HotkeyWorker).filter(HotkeyWorker.unbind_signature.is_(None)).all():
             result[row.worker] = row.hotkey
         return result
 
@@ -81,7 +90,7 @@ class DatabaseService:
             raise ValueError("Worker already registered")
         # Restrict number of workers per hotkey
         worker_count = (
-            self.session.query(HotkeyWorker).filter_by(hotkey=hotkey).count()
+            self.session.query(HotkeyWorker).filter_by(hotkey=hotkey, unbind_signature=None).count()
         )
         if worker_count >= self.max_workers:
             raise ValueError(
@@ -132,6 +141,44 @@ class DatabaseService:
             }
             for row in results
         ]
+
+    async def mark_worker_unbound(
+        self,
+        hotkey: str,
+        worker: str,
+        unbind_signature: str,
+    ) -> None:
+        # Mark the worker as unbound by setting unbind_signature
+        obj = self.session.query(HotkeyWorker).filter_by(hotkey=hotkey, worker=worker).first()
+        if not obj:
+            raise ValueError("Worker not found for this hotkey")
+        if obj.unbind_signature:
+            raise ValueError("Worker already unbound")
+        obj.unbind_signature = unbind_signature
+        self.session.commit()
+        return None
+
+    async def get_validator_sync_offset(self, hotkey: str) -> float:
+        """Get the last registration time synced for a validator hotkey"""
+        row = self.session.query(ValidatorSyncOffset).filter_by(hotkey=hotkey).first()
+        if row:
+            return row.last_registration_time
+        return 0.0
+
+    async def update_validator_sync_offset(self, hotkey: str, registration_time: float) -> None:
+        """Update the last registration time synced for a validator hotkey"""
+        row = self.session.query(ValidatorSyncOffset).filter_by(hotkey=hotkey).first()
+        if row:
+            row.last_registration_time = registration_time
+            row.last_sync_time = time.time()
+        else:
+            row = ValidatorSyncOffset(
+                hotkey=hotkey,
+                last_registration_time=registration_time,
+                last_sync_time=time.time()
+            )
+            self.session.add(row)
+        self.session.commit()
 
 
 class DynamicConfig(Base):
