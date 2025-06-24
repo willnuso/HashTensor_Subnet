@@ -137,6 +137,14 @@ async def sync_hotkey_workers_task(
                 registration_time = worker_obj["registration_time"]
                 signature = worker_obj["signature"]
                 
+                # Security check: worker name must contain the hotkey
+                if worker_hotkey not in worker:
+                    logger.warning(
+                        f"Worker name {worker} does not contain hotkey {worker_hotkey} - skipping for security"
+                    )
+                    page_failed += 1
+                    continue
+                
                 # Update the latest registration time seen
                 if registration_time > latest_registration_time:
                     latest_registration_time = registration_time
