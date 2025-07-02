@@ -21,7 +21,7 @@ class Validator:
         self.metrics_client = metrics_client
         self.mapping_manager = mapping_manager
         self.rating_calculator = RatingCalculator(
-            config.rating_weight, config.window, config.max_difficulty
+            config.rating_weight, config.window, max_difficulty=config.max_difficulty
         )
 
     async def compute_ratings(self):
