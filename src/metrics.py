@@ -144,8 +144,10 @@ class MetricsClient:
                 ):
                     continue
                 total_diff = total_diff_map.get(miner_key, 0.0)
+                invalid_shares = invalid_shares_map.get(miner_key, 0)
+                total_shares = valid_shares + invalid_shares
                 avg_difficulty = (
-                    total_diff / valid_shares if valid_shares > 0 else 0.0
+                    total_diff / total_shares if total_shares > 0 else 0.0
                 )
                 hashrate = (
                     (valid_shares * avg_difficulty * 2**32) / window_seconds
