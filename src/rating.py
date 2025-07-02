@@ -20,16 +20,20 @@ class RatingCalculator:
         uptime_alpha: float = 2.0,
         window: timedelta = timedelta(hours=1),
         ndigits: int = 8,
+        max_difficulty: float = 16384.0,
     ):
         self.uptime_alpha = float(uptime_alpha)
         self.window_seconds = (
             window.total_seconds()
         )  # length of the window (24h)
         self.ndigits = ndigits
+        self.max_difficulty = max_difficulty
 
     def compute_effective_work(self, metrics: List[MinerMetrics]) -> float:
-        """Sum of valid_shares * difficulty."""
-        return sum(m.valid_shares * m.difficulty for m in metrics)
+        """Sum of valid_shares * difficulty, with difficulty clamped to self.max_difficulty."""
+        return sum(
+            m.valid_shares * min(m.difficulty, self.max_difficulty) for m in metrics
+        )
 
     def compute_fractional_uptime(self, start_timestamp: float) -> float:
         """Convert the worker's unix start timestamp to a fractional uptime for the window."""

@@ -27,6 +27,7 @@ class ValidatorSettings(BaseSettings):
     max_workers_per_hotkey: int = 30
     sync_hotkey_workers_interval: timedelta = timedelta(minutes=5)
     disable_set_weights: bool = False
+    max_difficulty: float = 16384.0
     
     wallet_name: str = "default"
     wallet_hotkey: str = "default"

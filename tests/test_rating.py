@@ -255,7 +255,7 @@ def test_rating_calculator_real_data():
         result = calc.rate_all(metrics_dict)
         expected = {
             "hotkey1": 1.0,
-            "hotkey2": pytest.approx(0.00010845, abs=1e-8),
+            "hotkey2": pytest.approx(0.00022017, abs=1e-8),
         }
         for hotkey, exp_score in expected.items():
             assert result[hotkey] == exp_score
@@ -296,3 +296,81 @@ def test_rating_calculator_stub_data():
         assert result["stub1"] > result["stub2"]
         assert result["stub1"] > 0
         assert result["stub2"] >= 0
+
+
+def test_max_difficulty_clamping():
+    """Test that difficulty is clamped to max_difficulty when computing effective work."""
+    with patch("time.time", return_value=FIXED_NOW):
+        # Case 1: difficulty below max_difficulty
+        calc = RatingCalculator(max_difficulty=16384.0)
+        metrics_dict = {
+            "hotkey1": [
+                MinerMetrics(
+                    uptime=FIXED_NOW - 3600,
+                    valid_shares=10,
+                    invalid_shares=0,
+                    difficulty=10000.0,  # below max
+                    hashrate=1000.0,
+                )
+            ]
+        }
+        result = calc.rate_all(metrics_dict)
+        # 10 * 10000 = 100000
+        assert result["hotkey1"] == 1.0
+
+        # Case 2: difficulty above max_difficulty
+        metrics_dict = {
+            "hotkey1": [
+                MinerMetrics(
+                    uptime=FIXED_NOW - 3600,
+                    valid_shares=10,
+                    invalid_shares=0,
+                    difficulty=20000.0,  # above max
+                    hashrate=1000.0,
+                )
+            ]
+        }
+        result = calc.rate_all(metrics_dict)
+        # 10 * 16384 = 163840 (should be clamped)
+        assert result["hotkey1"] == 1.0
+
+        # Case 3: two hotkeys, one above and one below max_difficulty
+        metrics_dict = {
+            "hotkey1": [
+                MinerMetrics(
+                    uptime=FIXED_NOW - 3600,
+                    valid_shares=10,
+                    invalid_shares=0,
+                    difficulty=20000.0,  # above max
+                    hashrate=1000.0,
+                )
+            ],
+            "hotkey2": [
+                MinerMetrics(
+                    uptime=FIXED_NOW - 3600,
+                    valid_shares=10,
+                    invalid_shares=0,
+                    difficulty=10000.0,  # below max
+                    hashrate=1000.0,
+                )
+            ],
+        }
+        result = calc.rate_all(metrics_dict)
+        # hotkey1: 10*16384=163840, hotkey2: 10*10000=100000
+        assert result["hotkey1"] == 1.0
+        assert result["hotkey2"] == pytest.approx(100000/163840, abs=1e-8)
+
+        # Case 4: difficulty exactly at max_difficulty
+        metrics_dict = {
+            "hotkey1": [
+                MinerMetrics(
+                    uptime=FIXED_NOW - 3600,
+                    valid_shares=10,
+                    invalid_shares=0,
+                    difficulty=16384.0,  # exactly max
+                    hashrate=1000.0,
+                )
+            ]
+        }
+        result = calc.rate_all(metrics_dict)
+        assert result["hotkey1"] == 1.0
