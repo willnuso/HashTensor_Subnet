@@ -30,9 +30,13 @@ class RatingCalculator:
         self.max_difficulty = max_difficulty
 
     def compute_effective_work(self, metrics: List[MinerMetrics]) -> float:
-        """Sum of valid_shares * difficulty, with difficulty clamped to self.max_difficulty."""
+        """
+        Sum of valid_shares * difficulty, with difficulty clamped to self.max_difficulty,
+        and apply a per-worker penalty if difficulty exceeds max_difficulty.
+        """
         return sum(
-            m.valid_shares * min(m.difficulty, self.max_difficulty) for m in metrics
+            m.valid_shares * min(m.difficulty, self.max_difficulty) * self.penalty_exponential(m.difficulty)
+            for m in metrics
         )
 
     def compute_fractional_uptime(self, start_timestamp: float) -> float:
@@ -65,6 +69,15 @@ class RatingCalculator:
         uptimes = [max(0.0, min(1.0, u)) for u in uptimes]
         return sum(uptimes) / len(uptimes)
 
+    def penalty_exponential(self, difficulty: float) -> float:
+        """
+        Applies an exponential penalty if difficulty exceeds max_difficulty.
+        Returns a penalty factor in [0, 1].
+        """
+        if difficulty > self.max_difficulty:
+            return math.exp(-(difficulty - self.max_difficulty) / self.max_difficulty)
+        return 1.0
+
     def rate_all(
         self, metrics: Dict[str, List[MinerMetrics]]
     ) -> Dict[str, float]:
@@ -72,7 +85,7 @@ class RatingCalculator:
         First, compute effective work (valid_shares * difficulty),
         normalize, apply uptime penalty, and clamp the result.
         """
-        # 1. Total work
+        # 1. Total work (now includes per-worker penalty)
         work = {
             hotkey: self.compute_effective_work(ms)
             for hotkey, ms in metrics.items()
