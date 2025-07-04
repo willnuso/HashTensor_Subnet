@@ -1,4 +1,4 @@
-# interfaces/sqlite.py
+# interfaces/sqlite.py (This is just an internal comment, the file itself is database.py)
 # SQLite interface for hotkey <-> worker mapping using SQLAlchemy
 
 from datetime import datetime
@@ -74,6 +74,16 @@ class DatabaseService:
         )
         self.session = self.SessionLocal()
         self.max_workers = max_workers
+        
+        # --- NEW CODE ADDED HERE ---
+        # Ensure the 'data' directory exists (relative to where the app runs in Docker, which is /app)
+        db_path_in_container = db_url.replace("sqlite:///", "/app/")
+        db_dir = os.path.dirname(db_path_in_container)
+        if not os.path.exists(db_dir):
+            os.makedirs(db_dir)
+        # Create all tables if they don't exist
+        Base.metadata.create_all(self.engine)
+        # --- END NEW CODE ---
 
     async def add_mapping(
         self,
