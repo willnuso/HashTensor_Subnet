@@ -35,15 +35,17 @@ class ValidatorSettings(BaseSettings):
     wallet_path: str = "~/.bittensor/wallets/"
 
     # --- NEW PARAMETER FOR INVALID SHARES PENALTY ---
-    # This field defines a configurable penalty factor for invalid shares.
-    # A value of 0.0 means no penalty, 1.0 means a very severe penalty.
     invalid_shares_penalty_factor: float = Field(
-        default=0.5, # You can change this default value if you wish
+        default=0.5, # Default value for the penalty (0.0 to 1.0)
         description="Factor for penalizing invalid shares in rating. 0.0 means no penalty, 1.0 means severe.",
     )
     # -------------------------------------------------
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+        env_prefix="VALIDATOR_" # <--- THIS IS THE CRUCIAL LINE WE ARE ADDING/CORRECTING
+    )
 
     @property
     def netuid(self) -> int:
