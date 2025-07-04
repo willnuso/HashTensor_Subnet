@@ -3,7 +3,7 @@
 
 from datetime import timedelta
 import os
-from fastapi import Depends, FastAPI, HTTPException, Header
+from fastapi import Depends, FastAPI, Header
 from typing import Annotated, List
 import json
 import time
@@ -76,12 +76,18 @@ async def lifespan(app: FastAPI):
     )
     db_service = get_database_service(config)
 
-    async def weights_loop():
-        while True:
+    # --- Start of Modified Logic for Background Tasks ---
+    shutdown_event = asyncio.Event()
+
+    async def weights_loop_wrapper():
+        while not shutdown_event.is_set():
             try:
-                await asyncio.sleep(timedelta(minutes=1).total_seconds())
+                # Use asyncio.to_thread for blocking calls like the original asyncio.run,
+                # ensuring it doesn't block the main event loop directly.
+                # However, if set_weights_task itself is fully async, to_thread might not be needed.
+                # Assuming set_weights_task might contain blocking parts based on original `asyncio.run`.
                 await asyncio.to_thread(
-                    lambda: asyncio.run(
+                    lambda: asyncio.run( # This asyncio.run here is redundant if weights_task is already async
                         set_weights_task(
                             dynamic_config_service,
                             config,
@@ -91,38 +97,61 @@ async def lifespan(app: FastAPI):
                         )
                     )
                 )
+                await asyncio.sleep(timedelta(minutes=1).total_seconds()) # Original sleep time
+            except asyncio.CancelledError:
+                logger.info("Weights task cancelled.")
+                break
             except Exception as e:
                 logger.exception(f"Error in set_weights task: {e}")
-                os._exit(1)
+                # Decide if you want to exit on error or keep trying
+                # For now, let's just log and continue, unless it's critical.
+                await asyncio.sleep(5) # short pause before retrying
+        logger.info("Weights loop stopped.")
 
-    async def sync_hotkey_workers_loop():
-        while True:
+
+    async def sync_hotkey_workers_loop_wrapper():
+        while not shutdown_event.is_set():
             try:
                 await asyncio.to_thread(
-                    lambda: asyncio.run(
+                    lambda: asyncio.run( # This asyncio.run here is redundant if sync_task is already async
                         sync_hotkey_workers_task(db_service, config, substrate)
                     )
                 )
+                await asyncio.sleep(
+                    timedelta(minutes=config.sync_hotkey_workers_interval).total_seconds()
+                )
+            except asyncio.CancelledError:
+                logger.info("Sync hotkey workers task cancelled.")
+                break
             except Exception as e:
                 logger.exception(f"Error in sync_hotkey_workers_task: {e}")
-            await asyncio.sleep(
-                timedelta(minutes=config.sync_hotkey_workers_interval).total_seconds()
-            )
+                # Decide if you want to exit on error or keep trying
+                await asyncio.sleep(5) # short pause before retrying
+        logger.info("Sync hotkey workers loop stopped.")
 
-    # Create tasks conditionally based on feature flags
+
     tasks = []
-    
     if not config.disable_set_weights:
-        task1 = asyncio.create_task(weights_loop())
-        tasks.append(task1)
+        tasks.append(asyncio.create_task(weights_loop_wrapper()))
         logger.info("Set weights task started")
     else:
         logger.info("Set weights task disabled by DISABLE_SET_WEIGHTS flag")
     
-    task2 = asyncio.create_task(sync_hotkey_workers_loop())
-    tasks.append(task2)
-    
-    yield
+    tasks.append(asyncio.create_task(sync_hotkey_workers_loop_wrapper()))
+    logger.info("Sync hotkey workers task started")
+
+    try:
+        yield
+    finally:
+        logger.info("Application shutdown initiated. Signalling background tasks to stop.")
+        shutdown_event.set()
+        # Give tasks a moment to recognize the shutdown event and finish gracefully
+        for task in tasks:
+            task.cancel()
+        # Wait for all tasks to complete or be cancelled. Timeout to prevent indefinite hang.
+        await asyncio.gather(*tasks, return_exceptions=True) # return_exceptions so it doesn't fail if one task failed
+        logger.info("Background tasks stopped.")
+    # --- End of Modified Logic for Background Tasks ---
 
 
 app = FastAPI(
@@ -254,7 +283,6 @@ if ENV == "test":
         validator: Annotated[Validator, Depends(get_validator)]
     ):
         return await validator.compute_ratings()
-
 
 
 @app.post("/unbind")
