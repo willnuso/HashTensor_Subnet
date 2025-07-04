@@ -4,7 +4,7 @@
 from .metrics import MetricsClient, MinerKey
 from .mapping import MappingManager
 from .rating import RatingCalculator
-from .config import ValidatorSettings
+from .config import ValidatorSettings # Ensure ValidatorSettings is imported
 from typing import Dict, List
 from src.metrics import MinerMetrics
 from collections import defaultdict
@@ -21,7 +21,11 @@ class Validator:
         self.metrics_client = metrics_client
         self.mapping_manager = mapping_manager
         self.rating_calculator = RatingCalculator(
-            config.rating_weight, config.window, max_difficulty=config.max_difficulty
+            uptime_alpha=config.rating_weight, # Corresponds to rating_weight in config
+            window=config.window,
+            max_difficulty=config.max_difficulty,
+            # NEW PARAMETER: Pass the invalid_shares_penalty_factor from config
+            invalid_shares_penalty_factor=config.invalid_shares_penalty_factor,
         )
 
     async def compute_ratings(self):
