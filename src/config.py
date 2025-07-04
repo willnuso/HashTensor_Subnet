@@ -6,6 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
 from fiber.constants import FINNEY_NETWORK, FINNEY_TEST_NETWORK
 from .utils import get_netuid
+from pydantic import Field # <--- NEW IMPORT: Needed for the new Field definition
 
 
 class ValidatorSettings(BaseSettings):
@@ -32,6 +33,15 @@ class ValidatorSettings(BaseSettings):
     wallet_name: str = "default"
     wallet_hotkey: str = "default"
     wallet_path: str = "~/.bittensor/wallets/"
+
+    # --- NEW PARAMETER FOR INVALID SHARES PENALTY ---
+    # This field defines a configurable penalty factor for invalid shares.
+    # A value of 0.0 means no penalty, 1.0 means a very severe penalty.
+    invalid_shares_penalty_factor: float = Field(
+        default=0.5, # You can change this default value if you wish
+        description="Factor for penalizing invalid shares in rating. 0.0 means no penalty, 1.0 means severe.",
+    )
+    # -------------------------------------------------
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
